@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discussion Forum</title>
+  <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .toolbar {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .toolbar a:hover {
+            text-decoration: underline;
+        }
+        .toolbar button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .toolbar button:hover {
+            background-color: #218838;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #home-bar {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: space-between;
+        }
+        #home-button {
+            margin-left: 0;
+        }
+        #main-heading {
+            text-align: center;
+            margin: 20px 0;
+            color: white;
+            width: 100%;
+        }
+        #discussionList {
+            width: 60%;
+        }
+        .button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        #createThreadForm, #updateThreadForm {
+            display: none;
+            margin-top: 20px;
+        }
+        #submitDiscussion, #clearDiscussion, #updateDiscussion, #cancelUpdate {
+            display: inline-block;
+        }
+    </style>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+  <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+
+            fetch('http://localhost:8585/discussions/getEmail', authHeader)
+                .then(response => response.text())
+                .then(emailId => {
+                    window.userEmail = emailId;
+                })
+                .catch(error => console.error('Error fetching email ID:', error));
+
+            fetch('http://localhost:8585/getName', authHeader)
+                .then(response => response.text())
+                .then(name => {
+                    document.getElementById('welcomeMessage').innerText = `Welcome, ${name}`;
+                })
+                .catch(error => console.error('Error fetching user name:', error));
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('courseId');
+
+            document.getElementById('createThreadButton').addEventListener('click', function() {
+                document.getElementById('createThreadForm').style.display = 'block';
+                document.getElementById('updateThreadForm').style.display = 'none';
+            });
+
+            function loadDiscussions() {
+                axios.get(`http://localhost:8585/discussions/showDiscussion/${courseId}`, authHeader)
+                    .then(response => {
+                        displayDiscussions(response.data);
+                    })
+                    .catch(error => console.error('Error fetching discussions:', error));
+            }
+
+            function displayDiscussions(discussions) {
+                var discussionList = document.getElementById('discussionList');
+                discussionList.innerHTML = '';
+                discussions.forEach(discussion => {
+                    var li = document.createElement('li');
+                    li.textContent = `${discussion.topicHeading} - ${discussion.description} - Posted by: ${discussion.emailId} on ${new Date(discussion.date).toLocaleDateString()}`;
+
+                    // Create delete button
+                    var deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('button');
+                    deleteButton.onclick = function() {
+                        deleteDiscussion(discussion.id);
+                    };
+                    li.appendChild(deleteButton);
+
+                    // Create update button
+                    var updateButton = document.createElement('button');
+                    updateButton.textContent = 'Update';
+                    updateButton.classList.add('button');
+                    updateButton.onclick = function() {
+                        showUpdateForm(discussion.id, discussion.emailId, discussion.topicHeading, discussion.description);
+                    };
+                    li.appendChild(updateButton);
+
+                    discussionList.appendChild(li);
+                });
+            }
+
+            function deleteDiscussion(discussionId) {
+                if (confirm('Are you sure you want to delete this discussion?')) {
+                    axios.delete(`http://localhost:8585/discussions/delete/${discussionId}`, authHeader)
+                        .then(function (response) {
+                            alert('Discussion deleted!');
+                            loadDiscussions();
+                        })
+                        .catch(function (error) {
+                            if (error.response ) {
+                                alert('You are not authorized to delete this discussion.');
+                            } else {
+                                console.log(error);
+                            }
+                        });
+                }
+            }
+
+            function showUpdateForm(discussionId, emailId, topicHeading, description) {
+                if (window.userEmail !== emailId) {
+                    alert("You are not authorized to update this discussion.");
+                    return;
+                }
+
+                document.getElementById('updateThreadForm').style.display = 'block';
+                document.getElementById('createThreadForm').style.display = 'none';
+                document.getElementById('updateTopicHeading').value = topicHeading;
+                document.getElementById('updateDescription').value = description;
+                document.getElementById('updateDiscussion').onclick = function () {
+                    updateDiscussion(discussionId);
+                };
+            }
+
+            function updateDiscussion(discussionId) {
+                var updatedDiscussionData = {
+                    topicHeading: document.getElementById('updateTopicHeading').value,
+                    description: document.getElementById('updateDescription').value
+                };
+
+                axios.put(`http://localhost:8585/discussions/update/${discussionId}`, updatedDiscussionData, authHeader)
+                    .then(function (response) {
+                        alert('Discussion updated!');
+                        document.getElementById('updateThreadForm').style.display = 'none';
+                        loadDiscussions();
+                    })
+                    .catch(function (error) {
+                        if (error.response && error.response.status === 403) {
+                            alert('You are not authorized to update this discussion.');
+                        } else {
+                            console.log(error);
+                        }
+                    });
+            }
+
+            document.getElementById('saveDiscussion').addEventListener('click', function () {
+                var topicHeading = document.getElementById('topicHeading').value;
+                var description = document.getElementById('description').value;
+
+                axios.post('http://localhost:8585/discussions/create', {
+                    date: new Date().toISOString().split('T')[0],
+                    topicHeading: topicHeading,
+                    description: description,
+                    courseId: courseId,
+                    emailId: window.userEmail
+                }, authHeader)
+                .then(function (response) {
+                    alert('Discussion saved!');
+                    document.getElementById('createThreadForm').style.display = 'none';
+                    loadDiscussions();
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+            });
+
+            document.getElementById("logout-button").addEventListener("click", function() {
+                // Remove the token from local storage
+                localStorage.removeItem('token');
+                // Redirect the user to the login page or any other appropriate action
+                window.location.href = "login.html";
+            });
+
+            document.getElementById('home-button').addEventListener('click', function() {
+                window.location.href = 'home.html';
+            });
+
+            document.getElementById('cancelUpdate').addEventListener('click', function() {
+                document.getElementById('updateThreadForm').style.display = 'none';
+            });
+
+            loadDiscussions();
+        });
+    </script>
+</head>
+<body>
+<div id="home-bar" class="toolbar">
+  <button id="home-button" class="button">Home</button>
+
+  <h1 id="main-heading">Discussion Forum</h1>
+
+  <div id="welcomeMessage">
+    Welcome, User
+  </div>
+  <button id="logout-button" class="button">Logout</button>
+</div>
+<div class='container'>
+  <div id='discussionList'></div>
+  <div>
+    <button id="createThreadButton" class="button">Create Thread</button>
+    <div id="createThreadForm">
+      <h2>Create New Discussion</h2>
+      <label for="topicHeading">Heading:</label>
+      <input type="text" id="topicHeading" />
+      <br />
+      <label for="description">Description:</label>
+      <textarea id="description" rows="3"></textarea>
+      <br />
+      <button id="saveDiscussion" class="button">Save Discussion</button>
+    </div>
+  </div>
+  <div id="updateThreadForm">
+    <h2>Update Discussion</h2>
+    <label for="updateTopicHeading">Heading:</label>
+    <input type="text" id="updateTopicHeading" />
+    <br />
+    <label for="updateDescription">Description:</label>
+    <textarea id="updateDescription" rows="3"></textarea>
+    <br />
+    <button id="updateDiscussion" class="button">Update Discussion</button>
+    <button id="cancelUpdate" class="button">Cancel</button>
+  </div>
+</div>
+</body>
+</html>

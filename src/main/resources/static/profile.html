@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <style>
+        /* Your CSS styles here */
+        .container {
+            text-align: center;
+        }
+        .button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .delete-modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Profile</h1>
+        <p id="email">Email: </p>
+        <p id="name">Name: </p>
+        <p id="studentId">Student ID: </p>
+        <p id="number">Phone Number: </p>
+        <button id="edit-button" class="button">Edit Profile</button>
+        <button id="delete-button" class="button delete-button">Delete Account</button>
+        <button id="home-button" class="button">Back to Home</button>
+        <button id="logout-button" class="button">Logout</button>
+    </div>
+
+    <!-- The Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Profile</h2>
+            <form id="edit-form">
+                <div>
+                    <label for="edit-name">Name:</label>
+                    <input type="text" id="edit-name" name="name">
+                </div>
+                <div>
+                    <label for="edit-studentId">Student ID:</label>
+                    <p id="edit-studentId-text"></p>
+                </div>
+                <div>
+                    <label for="edit-number">Phone Number:</label>
+                    <input type="text" id="edit-number" name="number">
+                </div>
+                <button type="submit" class="button">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- The Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="delete-modal-content">
+            <span class="close">&times;</span>
+            <h2>Confirm Delete</h2>
+            <p>Are you sure you want to delete your account?</p>
+            <button id="confirm-delete" class="button delete-button">Yes</button>
+            <button id="cancel-delete" class="button">No</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // Redirect to login page if token is not present
+                window.location.href = 'login.html';
+            }
+
+            fetch('/api/v1/profile', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch profile data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('email').textContent += data.emailId;
+                document.getElementById('name').textContent += data.name;
+                document.getElementById('studentId').textContent += data.studentIdNumber;
+                document.getElementById('number').textContent += data.number;
+                document.getElementById('edit-name').value = data.name;
+                document.getElementById('edit-studentId-text').textContent = data.studentIdNumber;
+                document.getElementById('edit-number').value = data.number;
+            })
+            .catch(error => {
+                console.error('Error fetching profile data:', error);
+            });
+
+            // Edit modal handling
+            var editModal = document.getElementById("editModal");
+            var editBtn = document.getElementById("edit-button");
+            var editClose = document.getElementsByClassName("close")[0];
+
+            editBtn.onclick = function() {
+                editModal.style.display = "block";
+            }
+
+            editClose.onclick = function() {
+                editModal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == editModal) {
+                    editModal.style.display = "none";
+                }
+            }
+
+            document.getElementById("edit-form").addEventListener("submit", function(event) {
+                event.preventDefault();
+
+                var updatedProfile = {
+                    name: document.getElementById('edit-name').value,
+                    number: document.getElementById('edit-number').value
+                };
+
+                fetch('/api/v1/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(updatedProfile)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update profile');
+                    }
+                    alert('Profile updated successfully!');
+                    location.reload();  // Refresh the page to reflect the changes
+                })
+                .catch(error => {
+                    console.error('Error updating profile:', error);
+                    alert('Failed to update profile. Please try again later.');
+                });
+            });
+
+            // Delete modal handling
+            var deleteModal = document.getElementById("deleteModal");
+            var deleteBtn = document.getElementById("delete-button");
+            var deleteClose = document.getElementsByClassName("close")[1];
+            var confirmDeleteBtn = document.getElementById("confirm-delete");
+            var cancelDeleteBtn = document.getElementById("cancel-delete");
+
+            deleteBtn.onclick = function() {
+                deleteModal.style.display = "block";
+            }
+
+            deleteClose.onclick = function() {
+                deleteModal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == deleteModal) {
+                    deleteModal.style.display = "none";
+                }
+            }
+
+            confirmDeleteBtn.onclick = function() {
+                fetch('/api/v1/profile', {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete account');
+                    }
+                    alert('Account deleted successfully!');
+                    window.location.href = 'login.html';
+                })
+                .catch(error => {
+                    console.error('Error deleting account:', error);
+                    alert('Failed to delete account. Please try again later.');
+                });
+                deleteModal.style.display = "none"; // Close modal after clicking confirm
+            }
+
+            cancelDeleteBtn.onclick = function() {
+                deleteModal.style.display = "none";
+            };
+
+
+            // Navigation and logout handling
+            document.getElementById('home-button').addEventListener('click', function() {
+                window.location.href = 'home.html';
+            });
+
+            document.getElementById('logout-button').addEventListener('click', function() {
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+            });
+
+            //logging out
+            document.getElementById("logout-button").addEventListener("click", function() {
+            // Remove the token from local storage
+            localStorage.removeItem('token');
+
+            // Redirect the user to the login page or any other appropriate action
+            window.location.href = "login.html";
+        });
+        });
+    </script>
+</body>
+</html>

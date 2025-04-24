@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="login-form" method="POST">
+        <div>
+            <label for="emailId">Email:</label>
+            <input type="email" id="emailId" name="emailId" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+
+    <!-- Sign Up link -->
+    <p>Don't have an account? <a href="signup.html">Sign Up</a></p>
+
+    <script>
+        document.getElementById("login-form").addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent form submission
+
+            var formData = {
+                emailId: document.getElementById("emailId").value,
+                password: document.getElementById("password").value,
+            };
+
+            fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // Handle successful login and store JWT token
+                    localStorage.setItem('token', data.token);
+                    alert("Login successful!");
+
+                    // Redirect to home.html
+                    window.location.href = "home.html";
+                } else {
+                    throw new Error('Login failed.');
+                }
+            })
+            .catch(error => {
+                // Handle login error
+                alert("Login failed. Please try again.");
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instructor Details</title>
+  <link rel="stylesheet" href="instructor.css">
+</head>
+<body>
+<div class="container">
+  <h1>Instructor Details</h1>
+  <div id="instructorDetails">
+    <!-- Instructor details will be displayed here -->
+  </div>
+</div>
+<script>
+    // Get the instructor ID from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const instructorId = urlParams.get('id'); // Assuming the instructor ID is passed as a query parameter
+
+    // Fetch instructor details from the API
+    fetchInstructorDetails();
+
+    function fetchInstructorDetails() {
+        // Fetch data from your API
+        fetch(`/api/instructor/${instructorId}`) // Replace {id} with the actual instructor ID
+            .then(response => response.json())
+            .then(data => {
+                // Extract relevant information from the response
+                const instructorName = data.instructorName;
+                const instructorDescription = data.instructorDescription;
+                const meetingHours = data.meetingHours;
+                const instructorCabinLocation = data.instructorCabinLocation;
+
+                // Update the HTML with instructor details
+                document.getElementById('instructorDetails').innerHTML = `
+                    <p><strong>Instructor Name:</strong> ${instructorName}</p>
+                    <p><strong>Description:</strong> ${instructorDescription}</p>
+                    <p><strong>Meeting Hours:</strong> ${meetingHours}</p>
+                    <p><strong>Cabin Location:</strong> ${instructorCabinLocation}</p>
+                `;
+            })
+            .catch(error => console.error('Error fetching instructor details:', error));
+    }
+</script>
+</body>
+</html>

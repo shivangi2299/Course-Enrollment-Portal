@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrollments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .toolbar {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .toolbar a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-top: 20px;
+        }
+        #studentInfo {
+            text-align: center;
+            margin: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div>
+            <a href="home.html">Home</a>
+            <a href="courseCatalog.html">Course Catalog</a>
+        </div>
+        <div id="welcomeMessage">
+            Welcome, User
+        </div>
+    </div>
+    <h1>Enrollments</h1>
+    <div id="studentInfo">
+        <p id="studentName"></p>
+        <p id="studentEmail"></p>
+    </div>
+    <table id="enrollmentsTable">
+        <thead>
+            <tr>
+                <th>Enrollment ID</th>
+                <th>Course Name</th>
+                <th>Course Description</th>
+                <th>Delete</th>
+                <th>View Details</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+            }
+
+            // Fetch user name
+            fetch('/getName', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.text())
+            .then(name => {
+                document.getElementById('welcomeMessage').innerText = `Welcome, ${name}`;
+            })
+            .catch(error => console.error('Error fetching user name:', error));
+
+            fetch('/enroll/showEnrollments', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const student = data[0].student;
+                    document.getElementById('studentName').textContent = 'Student Name: ' + student.name;
+                    document.getElementById('studentEmail').textContent = 'Student Email: ' + student.emailId;
+                }
+
+                const table = document.getElementById('enrollmentsTable').getElementsByTagName('tbody')[0];
+                data.forEach(enrollment => {
+                    let row = table.insertRow();
+                    let cell1 = row.insertCell(0);
+                    let cell2 = row.insertCell(1);
+                    let cell3 = row.insertCell(2);
+                    let cell4 = row.insertCell(3);  // Cell for delete button
+                    let cell5 = row.insertCell(4); // Cell for view button
+
+                    cell1.innerHTML = enrollment.id;
+                    cell2.innerHTML = enrollment.catalog.courseName;
+                    cell3.innerHTML = enrollment.catalog.courseDesc;
+                    cell4.innerHTML = '<button class="button" onClick="deleteEnrollment(' + enrollment.id + ')">Delete</button>';
+                     cell5.innerHTML = '<button class="button view-button" onClick="viewCourseDetails(' + enrollment.catalog.courseId + ')">View Details</button>';
+
+                });
+            })
+            .catch(error => console.error('Error fetching enrollments:', error));
+
+
+              window.viewCourseDetails = function(courseId) {
+                window.location.href = 'courseDescription.html?courseId=' + courseId;
+            }
+
+            window.deleteEnrollment = function(enrollmentId) {
+                fetch('/enroll/deleteEnrollment/' + enrollmentId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete enrollment');
+                    }
+                    alert('Enrollment deleted successfully!');
+                    location.reload();  // Refresh the page to reflect the changes
+                })
+                .catch(error => {
+                    console.error('Error deleting enrollment:', error);
+                    alert('Failed to delete enrollment. Please try again later.');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

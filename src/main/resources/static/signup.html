@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 460px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+            font-size: 26px;
+        }
+
+        form div {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        input, button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        button[type="submit"] {
+            background-color: #667eea;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #5a67d8;
+        }
+
+        .error {
+            color: red;
+            font-size: 12px;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Signup</h2>
+    <form id="signup-form" method="POST">
+        <div>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+            <label for="emailId">Email:</label>
+            <input type="email" id="emailId" name="emailId" required>
+            <span id="email-error" class="error"></span>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div>
+            <label for="number">Phone Number:</label>
+            <input type="text" id="number" name="number" required>
+            <span id="phone-error" class="error"></span>
+        </div>
+        <div>
+            <label for="studentIdNumber">Student ID Number:</label>
+            <input type="text" id="studentIdNumber" name="studentIdNumber" required>
+            <span id="student-id-error" class="error"></span>
+        </div>
+        <button type="submit">Signup</button>
+    </form>
+    <div class="login-link">
+        <p>Have an account? <a href="login.html">Login</a></p>
+    </div>
+</div>
+<script>
+    document.getElementById("signup-form").addEventListener("submit", async function(event) {
+        event.preventDefault(); // Prevent form submission
+
+        // Clear previous error messages
+        document.getElementById("email-error").textContent = "";
+        document.getElementById("phone-error").textContent = "";
+        document.getElementById("student-id-error").textContent = "";
+
+        // Validate phone number and student ID
+        const phone = document.getElementById("number").value;
+        const studentId = document.getElementById("studentIdNumber").value;
+        const phoneRegex = /^\d{10}$/;
+        const studentIdRegex = /^\d{5}$/;
+
+        if (!phoneRegex.test(phone)) {
+            document.getElementById("phone-error").textContent = "Phone number must be exactly 10 digits";
+            return;
+        }
+
+        if (!studentIdRegex.test(studentId)) {
+            document.getElementById("student-id-error").textContent = "Student ID must be exactly 5 digits";
+            return;
+        }
+
+        // Check if email and student ID are unique
+        const email = document.getElementById("emailId").value;
+        const emailExists = await checkEmailExists(email);
+        const studentIdExists = await checkStudentIdExists(studentId);
+
+        if (emailExists) {
+            document.getElementById("email-error").textContent = "Email already exists";
+            return;
+        }
+        if (studentIdExists) {
+            document.getElementById("student-id-error").textContent = "Student ID exists in our records";
+            return;
+        }
+
+        // If all validations pass, proceed with signup
+        var formData = {
+            name: document.getElementById("name").value,
+            emailId: email,
+            password: document.getElementById("password").value,
+            studentIdNumber: studentId,
+            number: phone
+        };
+
+        fetch('/api/v1/auth/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.token) {
+                // Handle successful signup and store JWT token
+                localStorage.setItem('token', data.token);
+                alert("Signup successful!");
+
+                // Redirect or perform further actions here
+                window.location.href = "login.html";
+            } else {
+                throw new Error('Signup failed.');
+            }
+        })
+        .catch(error => {
+            // Handle signup error
+            alert("Signup failed. Please try again.");
+            console.error('Error:', error);
+        });
+    });
+
+    async function checkEmailExists(email) {
+        const response = await fetch(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`);
+        const data = await response.json();
+        return data.exists;
+    }
+
+    async function checkStudentIdExists(studentId) {
+        const response = await fetch(`/api/v1/auth/check-student-id?studentId=${encodeURIComponent(studentId)}`);
+        const data = await response.json();
+        return data.exists;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Catalog</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .toolbar {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .toolbar a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-top: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div>
+            <a href="home.html">Home</a>
+            <a href="enrollments.html">Enrollments</a>
+        </div>
+        <div id="welcomeMessage">
+            Welcome, User
+        </div>
+    </div>
+    <h1>Course Catalog</h1>
+    <table id="coursesTable">
+        <thead>
+            <tr>
+                <th>Course ID</th>
+                <th>Course Name</th>
+                <th>Description</th>
+                <th>Instructor</th>
+                <th>Credits</th>
+                <th>Enroll</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // Redirect to login page if token is not present
+                window.location.href = 'login.html';
+            }
+
+            // Fetch user name
+            fetch('/getName', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.text())
+            .then(name => {
+                document.getElementById('welcomeMessage').innerText = `Welcome, ${name}`;
+            })
+            .catch(error => console.error('Error fetching user name:', error));
+
+            // Fetch courses
+            fetch('/getCourses', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('coursesTable').getElementsByTagName('tbody')[0];
+                data.forEach(course => {
+                    let row = table.insertRow();
+                    let cell1 = row.insertCell(0);
+                    let cell2 = row.insertCell(1);
+                    let cell3 = row.insertCell(2);
+                    let cell4 = row.insertCell(3);
+                    let cell5 = row.insertCell(4);
+                    let cell6 = row.insertCell(5);  // Cell for enroll button
+
+                    cell1.innerHTML = course.courseId;
+                    cell2.innerHTML = course.courseName;
+                    cell3.innerHTML = course.courseDesc;
+                    cell4.innerHTML = `${course.courseIns.instructorName} (${course.courseIns.instructorDescription})`;
+                    cell5.innerHTML = course.courseCredits;
+                    cell6.innerHTML = '<button onClick="enrollCourse(' + course.courseId + ')">Enroll</button>';
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+
+            function enrollCourse(courseId) {
+                fetch('/enroll/enrollCourse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ courseId: String(courseId) })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to Enroll');
+                    }
+                    alert('Enrollment successful!');
+                    location.reload();  // Refresh the page to reflect the changes
+                })
+                .catch(error => {
+                    console.error('Error enrolling:', error);
+                    alert('Already Enrolled into this Course.');
+                });
+            }
+
+            // Attach the enrollCourse function to the global window object
+            window.enrollCourse = enrollCourse;
+        });
+    </script>
+
+</body>
+</html>

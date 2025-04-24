@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Event Calendar</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        #home-bar {
+            display: flex;
+            align-items: center;
+        }
+        #home-bar button {
+            margin-left: 10px;
+        }
+        #calendar {
+            width: 60%;
+        }
+        .button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // Redirect to login page if token is not present
+                window.location.href = 'login.html';
+            }
+
+            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+
+            var calendarEl = document.getElementById('calendar');
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                dateClick: function (info) {
+                    fetchEvents(info.dateStr);
+                }
+            });
+
+            calendar.render();
+
+            function fetchEvents(date) {
+                axios.get(`/events/${date}`, authHeader)
+                    .then(function (response) {
+                        displayEvents(response.data);
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            }
+
+            function displayEvents(events) {
+                var eventsList = document.getElementById('eventsList');
+                eventsList.innerHTML = '';
+                events.forEach(event => {
+                    var li = document.createElement('li');
+                    li.textContent = `${event.date} - ${event.eventName} - Organized by: ${event.organizerName}`;
+
+                    // Create delete button
+                    var deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = function() {
+                        deleteEvent(event.id);
+                    };
+                    li.appendChild(deleteButton);
+
+                    // Create update button
+                    var updateButton = document.createElement('button');
+                    updateButton.textContent = 'Update';
+                    updateButton.onclick = function() {
+                        updateEvent(event.id);
+                    };
+                    li.appendChild(updateButton);
+
+                    eventsList.appendChild(li);
+                });
+            }
+
+            function deleteEvent(eventId) {
+                if (confirm('Are you sure you want to delete this event?')) {
+                    axios.delete(`/events/${eventId}`, authHeader)
+                        .then(function (response) {
+                            alert('Event deleted!');
+                            // Refresh events list after deletion
+                            fetchEvents(document.getElementById('eventDate').value);
+                            // Navigate to the current date
+                            calendar.gotoDate(new Date());
+                        })
+                        .catch(function (error) {
+                            if (error.response && error.response.status === 403) {
+                                alert(error.response.data); // Show authorization error message
+                            } else {
+                                console.log(error);
+                            }
+                        });
+                }
+            }
+
+
+            function updateEvent(eventId, emailId) {
+                var newEventName = prompt('Enter the new event name:');
+                var newEventDate = prompt('Enter the new event date (YYYY-MM-DD):');
+
+                if (newEventName && newEventDate) {
+                    axios.put(`/events/${eventId }?emailId=${encodeURIComponent(emailId)}`, {
+                        eventName: newEventName,
+                        date: newEventDate
+                    }, authHeader)
+                    .then(function (response) {
+                        alert('Event updated!');
+                        // Refresh events list after update
+                        fetchEvents(document.getElementById('eventDate').value);
+                        // Navigate to the current date
+                        calendar.gotoDate(new Date());
+                    })
+                    .catch(function (error) {
+                        if (error.response && error.response.status === 403) {
+                            alert(error.response.data); // Show authorization error message
+                        } else {
+                            console.log(error);
+                        }
+                    });
+                }
+            }
+
+            document.getElementById('saveEvent').addEventListener('click', function () {
+                var date = document.getElementById('eventDate').value;
+                var eventName = document.getElementById('eventName').value;
+                var organizerName = document.getElementById('organizerName').value;
+
+                axios.post(`/events`, {
+                    date: date,
+                    eventName: eventName,
+                    organizerName: organizerName
+                }, authHeader)
+                .then(function (response) {
+                    alert('Event saved!');
+                    fetchEvents(date);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+            });
+
+            document.getElementById('home-button').addEventListener('click', function() {
+                window.location.href = 'home.html';
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="home-bar">
+        <h1>Event Calendar</h1>
+        <button id="home-button" class="button">Home</button>
+    </div>
+    <div class='container'>
+        <div id='calendar'></div>
+        <div>
+            <h2>Events</h2>
+            <ul id="eventsList"></ul>
+            <h2>Save New Event</h2>
+            <label for="eventDate">Date:</label>
+            <input type="date" id="eventDate" />
+            <br />
+            <label for="eventName">Event Name:</label>
+            <input type="text" id="eventName" />
+            <br />
+            <label for="organizerName">Organizer Name:</label>
+            <input type="text" id="organizerName" />
+            <br />
+            <button id="saveEvent" class="button">Save Event</button>
+        </div>
+    </div>
+</body>
+</html>

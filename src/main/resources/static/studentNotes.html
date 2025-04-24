@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Notes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .toolbar {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .toolbar a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-top: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .form-container {
+            width: 80%;
+            margin: 20px auto;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .form-container input, .form-container textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-container button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .form-container button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div>
+            <a href="home.html">Home</a>
+            <a href="courseCatalog.html">Course Catalog</a>
+            <a href="enrollments.html">Enrollments</a>
+        </div>
+        <div id="userName">
+            Welcome, User
+        </div>
+    </div>
+    <h1>Student Notes</h1>
+    <div class="form-container">
+        <h2>Add a New Note</h2>
+        <form id="noteForm">
+            <input type="text" id="courseId" name="courseId" placeholder="Course ID" required>
+            <input type="text" id="noteTitle" name="noteTitle" placeholder="Note Title" required>
+            <textarea id="noteContent" name="noteContent" rows="4" placeholder="Note Content" required></textarea>
+            <button type="submit">Add Note</button>
+        </form>
+    </div>
+    <table id="notesTable">
+        <thead>
+            <tr>
+                <th>Note Title</th>
+                <th>Note Content</th>
+                <th>Course ID</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+            }
+
+            // Fetch the user's name
+            fetch('/getName', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.text())
+            .then(name => {
+                document.getElementById('userName').textContent = `Welcome, ${name}`;
+            });
+
+            // Fetch student notes
+            fetch('/studentNotes', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('notesTable').getElementsByTagName('tbody')[0];
+                data.forEach(note => {
+                    let row = table.insertRow();
+                    let cell1 = row.insertCell(0);
+                    let cell2 = row.insertCell(1);
+                    let cell3 = row.insertCell(2);
+                    let cell4 = row.insertCell(3);  // Cell for actions
+
+                    cell1.innerHTML = note.noteTitle;
+                    cell2.innerHTML = note.noteContent;
+                    cell3.innerHTML = note.courseId;
+                    cell4.innerHTML = `<button class="button" onClick="deleteNote('${note.id}')">Delete</button>`;
+                });
+            })
+            .catch(error => console.error('Error fetching notes:', error));
+
+            // Handle form submission
+            document.getElementById('noteForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const note = {
+                    studentEmail: '', // Replace with the actual student email from your context
+                    courseId: document.getElementById('courseId').value,
+                    noteTitle: document.getElementById('noteTitle').value,
+                    noteContent: document.getElementById('noteContent').value
+                };
+
+                fetch('/studentNotes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(note)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to add note');
+                    }
+                    alert('Note added successfully!');
+                    location.reload();  // Refresh the page to reflect the changes
+                })
+                .catch(error => {
+                    console.error('Error adding note:', error);
+                    alert('Failed to add note. Please try again later.');
+                });
+            });
+
+            // Function to delete a note
+            window.deleteNote = function(noteId) {
+                fetch(`/studentNotes/${noteId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete note');
+                    }
+                    alert('Note deleted successfully!');
+                    location.reload();  // Refresh the page to reflect the changes
+                })
+                .catch(error => {
+                    console.error('Error deleting note:', error);
+                    alert('Failed to delete note. Please try again later.');
+                });
+            };
+        });
+    </script>
+</body>
+</html>
